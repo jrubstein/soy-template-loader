@@ -34,6 +34,10 @@ Use
 
       {namespace NAMESPACE}
 
+      /**
+       * Template description
+       * @param name arguments
+       */
       {template .hello}
         Hello {$name}!
       {/template}
