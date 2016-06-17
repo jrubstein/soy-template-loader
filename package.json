@@ -1,0 +1,24 @@
+{
+  "name": "soy-template-loader",
+  "version": "0.0.1",
+  "description": "Webpack loader for soy templates",
+  "main": "index.js",
+  "keywords": [
+    "soy",
+    "templates",
+    "loader",
+    "webpack"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jrubstein/soy-template-loader.git"
+  },
+  "author": "jrubstein <jrubstein@gmail.com>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "bluebird": "^3.4.0",
+    "loader-utils": "^0.2.15",
+    "rimraf": "^2.5.2",
+    "soynode": "^1.1.0"
+  }
+}
