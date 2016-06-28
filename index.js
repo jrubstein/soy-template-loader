@@ -13,8 +13,11 @@ module.exports = function(source) {
     namespace = /\{namespace\s+(.*?)\}/.exec(source)[1],
     filename = path.basename(this.resourcePath, '.soy'),
     yuiAdd = '',
+    lang = query.lang,
+    index = 0,
+    // TODO(jrubstein) Make this configurable through query.
+    regex = /LANG\(\\'(.*?)\\'\)/g,
     debug = 'var goog = {};';
-
 
   if (query.yui) {
     yuiAdd = [
@@ -62,6 +65,17 @@ module.exports = function(source) {
 
 	// Return utils and module return value, shimmed for module encapsulation.
 	}).then(function(template) {
+    template = template + '';
+    if (lang) {
+      var results = [], result;
+      while ((result = regex.exec(template)) !== null) {
+        results.push(result[1]);
+      }
+
+      for (; index < results.length; index++) {
+        template = template.replace('LANG(\\\'' + results[index]+ '\\\')', lang[results[index]]);
+      }
+    }
 		return callback(null, [
       yuiAdd,
       debug,
