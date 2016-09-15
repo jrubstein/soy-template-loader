@@ -21,8 +21,6 @@ module.exports = function(source) {
     regex = /LANG\(\\'(.*?)\\'\)/g,
     debug = 'var goog = {};';
 
-  console.log(query);
-
   if (query.yui) {
     yuiAdd = [
       'var Y;',
