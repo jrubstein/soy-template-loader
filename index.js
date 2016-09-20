@@ -10,7 +10,7 @@ var loaderUtils = require('loader-utils'),
 module.exports = function(source) {
   var query = loaderUtils.parseQuery(this.query),
     callback = this.async(),
-    tempDir = path.join(__dirname, Date.now() + ''),
+    tempDir = path.join(__dirname, Math.random() + Date.now() + ''),
     namespace = /\{namespace\s+(.*?)\}/.exec(source)[1].split(' ')[0],
     filename = path.basename(this.resourcePath, '.soy'),
     yuiAdd = '',
@@ -64,7 +64,8 @@ module.exports = function(source) {
     if (dirPath.indexOf(':') !== -1) {
       dirPath = dirPath.split(':')[1];
     }
-    return path.join(dirPath, 'source.soy');
+
+    return path.join(dirPath, filename + '.soy');
 
   // Write the raw source template into the temp directory
   }).then(function(soyPath) {
