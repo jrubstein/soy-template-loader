@@ -16,7 +16,8 @@ Example
       loader: 'soy-template-loader',
       query: {
         debug: false,
-        yui: true
+        yui: true,
+        idom: false
       }
     }...
 
@@ -25,7 +26,7 @@ Options
 
 1. debug: Adds debug lines from the compiler.
 1. yui: Adds the YUI.add.
-
+1. idom: Adds [Incremental DOM](https://github.com/google/incremental-dom) support.
 
 Use
 ------
