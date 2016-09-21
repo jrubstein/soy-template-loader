@@ -1,6 +1,7 @@
 var loaderUtils = require('loader-utils'),
   Promise = require('bluebird'),
   soynode = Promise.promisifyAll(require('soynode')),
+  soyidom = require('soyidom'),
   fs = Promise.promisifyAll(require('fs')),
   rimrafAsync = Promise.promisify(require('rimraf')),
   path = require('path'),
@@ -9,10 +10,11 @@ var loaderUtils = require('loader-utils'),
 module.exports = function(source) {
   var query = loaderUtils.parseQuery(this.query),
     callback = this.async(),
-    tempDir = path.join(__dirname, Date.now() + ''),
+    tempDir = path.join(__dirname, Math.random() + Date.now() + ''),
     namespace = /\{namespace\s+(.*?)\}/.exec(source)[1].split(' ')[0],
     filename = path.basename(this.resourcePath, '.soy'),
     yuiAdd = '',
+    idomDeps = '',
     lang = query.lang,
     index = 0,
     // TODO(jrubstein) Make this configurable through query.
@@ -30,41 +32,67 @@ module.exports = function(source) {
     ].join(EOL);
   }
 
+  if (query.idom) {
+    idomDeps = [
+      'var IncrementalDom = require("incremental-dom");',
+      'var ie_open = IncrementalDom.elementOpen;',
+      'var ie_close = IncrementalDom.elementClose;',
+      'var ie_void = IncrementalDom.elementVoid;',
+      'var ie_open_start = IncrementalDom.elementOpenStart;',
+      'var ie_open_end = IncrementalDom.elementOpenEnd;',
+      'var itext = IncrementalDom.text;',
+      'var iattr = IncrementalDom.attr;',
+    ].join(EOL);
+  }
+
   if (query.debug) {
     debug += EOL + 'goog.DEBUG = true';
   }
 
   this.cacheable && this.cacheable();
   soynode.setOptions({
-		outputDir: '/',
-		uniqueDir: false,
-		eraseTemporaryFiles: false
-	});
+    outputDir: '/',
+    uniqueDir: false,
+    eraseTemporaryFiles: false
+  });
 
   fs.mkdirAsync(tempDir)
-	// Get the temp directory path
-	.then(function() {
-		dirPath = tempDir;
-		// Handle drive letters in windows environments (C:\)
-		if (dirPath.indexOf(':') !== -1) {
-			dirPath = dirPath.split(':')[1];
-		}
-		return path.join(dirPath, 'source.soy');
+  // Get the temp directory path
+  .then(function() {
+    dirPath = tempDir;
+    // Handle drive letters in windows environments (C:\)
+    if (dirPath.indexOf(':') !== -1) {
+      dirPath = dirPath.split(':')[1];
+    }
 
-	// Write the raw source template into the temp directory
-	}).then(function(soyPath) {
-		return fs.writeFileAsync(path.resolve(soyPath), source).return(soyPath);
+    return path.join(dirPath, filename + '.soy');
 
-	// Run the compiler on the raw template
-	}).then(function(soyPath) {
-		return soynode.compileTemplateFilesAsync([soyPath]).return(soyPath);
+  // Write the raw source template into the temp directory
+  }).then(function(soyPath) {
+    return fs.writeFileAsync(path.resolve(soyPath), source).return(soyPath);
 
-	// Read the newly compiled source
-	}).then(function(soyPath) {
-		return fs.readFileAsync(path.resolve(soyPath) + '.js');
+  // Run the compiler on the raw template
+  }).then(function(soyPath) {
+    if (query.idom) {
+      return soyidom.compile({
+        outputPathFormat: soyPath + '.js',
+        srcs: soyPath,
+        shouldDeclareTopLevelNamespaces: true,
+        shouldGenerateGoogModules: false,
+        useGoogIsRtlForBidiGlobalDir: false
+      }).then(function () {
+        return soyPath;
+      });
+    }
 
-	// Return utils and module return value, shimmed for module encapsulation.
-	}).then(function(template) {
+    return soynode.compileTemplateFilesAsync([soyPath]).return(soyPath);
+
+  // Read the newly compiled source
+  }).then(function(soyPath) {
+    return fs.readFileAsync(path.resolve(soyPath) + '.js');
+
+  // Return utils and module return value, shimmed for module encapsulation.
+  }).then(function(template) {
     template = template + '';
     if (lang) {
       var results = [], result;
@@ -76,17 +104,19 @@ module.exports = function(source) {
         template = template.replace('LANG(\\\'' + results[index]+ '\\\')', lang[results[index]]);
       }
     }
-		return callback(null, [
+
+    return callback(null, [
       yuiAdd,
+      idomDeps,
       debug,
-			template,
-			'module.exports = ' + namespace + ';'
-		].join(EOL));
-	// Handle any errors
-	}).catch(function(e) {
-		return callback(e);
-	// Cleanup temp directory
-	}).finally(function(template) {
-		return rimrafAsync(tempDir).return(template);
-	});
+      template,
+      'module.exports = ' + namespace + ';'
+    ].join(EOL));
+  // Handle any errors
+  }).catch(function(e) {
+    return callback(e);
+  // Cleanup temp directory
+  }).finally(function(template) {
+    return rimrafAsync(tempDir).return(template);
+  });
 };
